@@ -7,20 +7,107 @@
   <title>Download BeachQuest</title>
   <meta name="description" content="Download BeachQuest on iOS and Android." />
 
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KSW8ZSRVSM"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag("js", new Date());
+    gtag("config", "G-KSW8ZSRVSM");
+  </script>
+
   <script>
     const playStoreUrl = "https://play.google.com/store/apps/details?id=gr.sterna.beach_app";
     const appStoreUrl = "https://apps.apple.com/app/id6761381406";
-    const fallbackUrl = "https://beachquest.gr/app";
 
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    function detectPlatform() {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera || "";
 
-    setTimeout(() => {
-      if (/android/i.test(userAgent)) {
-        window.location.href = playStoreUrl;
-      } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-        window.location.href = appStoreUrl;
+      const isAndroid = /android/i.test(userAgent);
+
+      const isIOS =
+        /iPad|iPhone|iPod/.test(userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      if (isAndroid) return "android";
+      if (isIOS) return "ios";
+      return "desktop";
+    }
+
+    function trackEvent(eventName, platform) {
+      try {
+        if (typeof gtag !== "function") return;
+
+        gtag("event", eventName, {
+          event_category: "app_download_page",
+          platform: platform,
+          page_path: window.location.pathname
+        });
+      } catch (e) {
+        // Keep page working even if analytics fails
       }
-    }, 700);
+    }
+
+    function trackEventThenGo(eventName, platform, url) {
+      let redirected = false;
+
+      function go() {
+        if (redirected) return;
+        redirected = true;
+        window.location.href = url;
+      }
+
+      try {
+        if (typeof gtag !== "function") {
+          go();
+          return;
+        }
+
+        gtag("event", eventName, {
+          event_category: "app_download_page",
+          platform: platform,
+          page_path: window.location.pathname,
+          transport_type: "beacon",
+          event_callback: go,
+          event_timeout: 500
+        });
+
+        setTimeout(go, 700);
+      } catch (e) {
+        go();
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const platform = detectPlatform();
+
+      trackEvent("app_page_opened", platform);
+
+      const iosButton = document.getElementById("iosDownloadButton");
+      const androidButton = document.getElementById("androidDownloadButton");
+
+      iosButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        trackEventThenGo("manual_click_ios", platform, appStoreUrl);
+      });
+
+      androidButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        trackEventThenGo("manual_click_android", platform, playStoreUrl);
+      });
+
+      setTimeout(() => {
+        if (platform === "android") {
+          trackEventThenGo("auto_redirect_android", "android", playStoreUrl);
+        } else if (platform === "ios") {
+          trackEventThenGo("auto_redirect_ios", "ios", appStoreUrl);
+        }
+      }, 700);
+    });
   </script>
 
   <style>
@@ -45,10 +132,8 @@
       box-shadow: 0 12px 35px rgba(0,0,0,0.08);
     }
 
-    img {
-      width: 96px;
-      height: 96px;
-      border-radius: 24px;
+    .emoji {
+      font-size: 64px;
       margin-bottom: 18px;
     }
 
@@ -90,7 +175,7 @@
 
 <body>
   <div class="card">
-    <div style="font-size:64px; margin-bottom:18px;">🏖️</div>
+    <div class="emoji">🏖️</div>
 
     <h1>Get BeachQuest 🌊</h1>
 
@@ -99,11 +184,15 @@
       I’ll show you where to go.
     </p>
 
-    <a href="https://apps.apple.com/app/id6761381406">
+    <a id="iosDownloadButton" href="https://apps.apple.com/app/id6761381406">
       Download on App Store
     </a>
 
-    <a class="secondary" href="https://play.google.com/store/apps/details?id=gr.sterna.beach_app">
+    <a
+      id="androidDownloadButton"
+      class="secondary"
+      href="https://play.google.com/store/apps/details?id=gr.sterna.beach_app"
+    >
       Get it on Google Play
     </a>
 
